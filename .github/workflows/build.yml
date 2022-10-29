@@ -30,6 +30,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install libudev-dev
 
+      - name: Set Cargo and Rustup location
+        shell: bash
+        run: |
+          ROOT_FOLDER=${HOME}
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then
+            mkdir -p /c/rust
+            ROOT_FOLDER="C:\rust"
+          fi
+
+          echo "CARGO_HOME=${ROOT_FOLDER}/.cargo" >> ${GITHUB_ENV}
+          echo "RUSTUP_HOME=${ROOT_FOLDER}/.rustup" >> ${GITHUB_ENV}
+
       - name: Install Latest Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -46,10 +58,10 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
+            ${{ env.CARGO_HOME }}/bin/
+            ${{ env.CARGO_HOME }}/registry/index/
+            ${{ env.CARGO_HOME }}/registry/cache/
+            ${{ env.CARGO_HOME }}/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
