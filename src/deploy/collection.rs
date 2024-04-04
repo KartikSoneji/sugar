@@ -1,8 +1,8 @@
 use anchor_client::solana_sdk::{compute_budget::ComputeBudgetInstruction, pubkey::Pubkey};
 use anyhow::Result;
 use mpl_token_metadata::{
-    instruction::{create_master_edition_v3, create_metadata_accounts_v3},
-    state::{CollectionDetails, Creator},
+    instructions::{CreateMasterEditionV3Builder, CreateMetadataAccountV3Builder},
+    types::{CollectionDetails, Creator, DataV2},
 };
 use spl_associated_token_account::{
     get_associated_token_address, instruction::create_associated_token_account,
@@ -28,7 +28,7 @@ pub fn create_collection(
     config_data: &ConfigData,
     args: &DeployArgs,
 ) -> Result<(Signature, Pubkey)> {
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
     let payer = program.payer();
 
     let collection_mint = Keypair::new();
@@ -85,37 +85,36 @@ pub fn create_collection(
     };
     let collection_metadata_pubkey = find_metadata_pda(&collection_mint.pubkey());
 
-    let create_metadata_account_ix = create_metadata_accounts_v3(
-        mpl_token_metadata::ID,
-        collection_metadata_pubkey,
-        collection_mint.pubkey(),
-        payer,
-        payer,
-        payer,
-        collection_item.name.clone(),
-        config_data.symbol.clone(),
-        collection_item.metadata_link.clone(),
-        Some(vec![creator]),
-        0,
-        true,
-        true,
-        None,
-        None,
-        Some(CollectionDetails::V1 { size: 0 }),
-    );
+    let create_metadata_account_ix = CreateMetadataAccountV3Builder::new()
+        .metadata(collection_metadata_pubkey)
+        .mint(collection_mint.pubkey())
+        .mint_authority(payer)
+        .payer(payer)
+        .update_authority(payer, true)
+        .data(DataV2 {
+            name: collection_item.name.clone(),
+            symbol: config_data.symbol.clone(),
+            uri: collection_item.metadata_link.clone(),
+            creators: Some(vec![creator]),
+            seller_fee_basis_points: 0,
+            collection: None,
+            uses: None,
+        })
+        .collection_details(CollectionDetails::V1 { size: 0 })
+        .is_mutable(true)
+        .instruction();
 
     let collection_edition_pubkey = find_master_edition_pda(&collection_mint.pubkey());
 
-    let create_master_edition_ix = create_master_edition_v3(
-        mpl_token_metadata::ID,
-        collection_edition_pubkey,
-        collection_mint.pubkey(),
-        payer,
-        payer,
-        collection_metadata_pubkey,
-        payer,
-        Some(0),
-    );
+    let create_master_edition_ix = CreateMasterEditionV3Builder::new()
+        .edition(collection_edition_pubkey)
+        .mint(collection_mint.pubkey())
+        .update_authority(payer)
+        .mint_authority(payer)
+        .metadata(collection_metadata_pubkey)
+        .payer(payer)
+        .max_supply(0)
+        .instruction();
     let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
     let builder = program

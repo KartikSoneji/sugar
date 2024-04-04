@@ -44,7 +44,7 @@ pub fn process_guard_show(args: GuardShowArgs) -> Result<()> {
 
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(mpl_candy_guard::ID);
+    let program = client.program(mpl_candy_guard::ID)?;
 
     let pb = spinner_with_style();
     pb.set_message("Connecting...");

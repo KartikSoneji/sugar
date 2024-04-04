@@ -71,7 +71,7 @@ pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
     let config_data = get_config_data(&args.config)?;
     let client = setup_client(&sugar_config)?;
     let payer = sugar_config.keypair;
-    let program = client.program(mpl_candy_guard::ID);
+    let program = client.program(mpl_candy_guard::ID)?;
 
     let candy_guard = if candy_guard_id.is_empty() {
         println!("\n[2/3] {}Initializing a candy guard", GUARD_EMOJI);

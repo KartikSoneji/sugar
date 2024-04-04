@@ -74,7 +74,7 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
         COMPUTER_EMOJI
     );
 
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
     let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
     let builder = program

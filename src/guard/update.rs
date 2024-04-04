@@ -47,7 +47,7 @@ pub fn process_guard_update(args: GuardUpdateArgs) -> Result<()> {
 
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(mpl_candy_guard::ID);
+    let program = client.program(mpl_candy_guard::ID)?;
     let payer = sugar_config.keypair;
 
     let pb = spinner_with_style();

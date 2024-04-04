@@ -219,7 +219,7 @@ fn setup_withdraw(
 ) -> Result<(Program<Rc<Keypair>>, Pubkey, Pubkey)> {
     let sugar_config = sugar_setup(keypair, rpc_url)?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
     let payer = program.payer();
     let authority = if let Some(authority_str) = authority_opt {
         Pubkey::from_str(&authority_str)?

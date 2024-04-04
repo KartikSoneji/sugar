@@ -14,7 +14,7 @@ pub use anchor_client::{
 };
 use anyhow::Error;
 use console::style;
-use mpl_token_metadata::{instruction::sign_metadata, ID as METAPLEX_PROGRAM_ID};
+use mpl_token_metadata::instructions::SignMetadataBuilder;
 use retry::{delay::Exponential, retry};
 use solana_client::rpc_client::RpcClient;
 use tokio::sync::Semaphore;
@@ -55,7 +55,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
     let sugar_config = Arc::new(sugar_setup(args.keypair, args.rpc_url.clone())?);
 
     let client = setup_client(&sugar_config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
 
     pb.finish_with_message("Connected");
 
@@ -173,11 +173,14 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
 
 async fn sign(config: Arc<SugarConfig>, metadata: Pubkey) -> Result<(), Error> {
     let client = setup_client(&config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
 
     let recent_blockhash = program.rpc().get_latest_blockhash()?;
 
-    let ix = sign_metadata(METAPLEX_PROGRAM_ID, metadata, config.keypair.pubkey());
+    let ix = SignMetadataBuilder::new()
+        .metadata(metadata)
+        .creator(config.keypair.pubkey())
+        .instruction();
     let tx = Transaction::new_signed_with_payer(
         &[ix],
         Some(&config.keypair.pubkey()),

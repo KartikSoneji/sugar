@@ -4,14 +4,9 @@ use std::{
 };
 
 use anchor_client::solana_sdk::account::Account;
-use anchor_lang::AnchorDeserialize;
 use console::style;
 use futures::future::join_all;
-use mpl_token_metadata::{
-    instruction::update_metadata_accounts_v2,
-    state::{DataV2, Metadata},
-    ID as TOKEN_METADATA_PROGRAM_ID,
-};
+use mpl_token_metadata::{accounts::Metadata, instructions::UpdateV1Builder, types::Data};
 use serde::Serialize;
 use solana_client::{client_error::ClientError, rpc_client::RpcClient};
 use tokio::sync::Semaphore;
@@ -36,6 +31,7 @@ pub struct RevealArgs {
 
 #[derive(Clone, Debug)]
 pub struct MetadataUpdateValues {
+    pub mint_address: Pubkey,
     pub metadata_pubkey: Pubkey,
     pub metadata: Metadata,
     pub new_uri: String,
@@ -80,7 +76,7 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     let cache = load_cache(&args.cache, false)?;
     let sugar_config = sugar_setup(args.keypair, args.rpc_url.clone())?;
     let anchor_client = setup_client(&sugar_config)?;
-    let program = anchor_client.program(CANDY_MACHINE_ID);
+    let program = anchor_client.program(CANDY_MACHINE_ID)?;
 
     let candy_machine_id = match Pubkey::from_str(&cache.program.candy_machine) {
         Ok(candy_machine_id) => candy_machine_id,
@@ -178,7 +174,7 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     let metadata: Vec<Metadata> = accounts
         .into_iter()
         .map(|a| a.unwrap().data)
-        .map(|d| Metadata::deserialize(&mut d.as_slice()).unwrap())
+        .map(|d| Metadata::from_bytes(d.as_slice()).unwrap())
         .collect();
 
     let patterns: Vec<&str> = hidden_settings.name.split('$').collect();
@@ -190,7 +186,7 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     let index = match *index_pattern {
         "ID" => 0,
         "ID+1" => 1,
-        _ => panic!("Invalid name pattern set in hidden settings."),
+        _ => panic!("Invalid name pattern set in hidden settings: {index_pattern}"),
     };
 
     // Convert cache to make keys match NFT numbers.
@@ -226,7 +222,7 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     let spinner = spinner_with_style();
     spinner.set_message("Setting up transactions...");
     for m in metadata {
-        let name = m.data.name.trim_matches(char::from(0)).to_string();
+        let name = m.name.trim_matches(char::from(0)).to_string();
         let num = match pattern.captures(&name).map(|c| c[1].to_string()) {
             Some(num) => num,
             None => {
@@ -259,6 +255,7 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
             .clone();
 
         update_values.push(MetadataUpdateValues {
+            mint_address: m.mint,
             metadata_pubkey,
             metadata: m,
             new_uri,
@@ -353,30 +350,23 @@ async fn update_metadata_value(
     update_authority: Arc<Keypair>,
     value: MetadataUpdateValues,
 ) -> Result<(), ClientError> {
-    let mut data = value.metadata.data;
-    if data.uri.trim_matches(char::from(0)) != value.new_uri.trim_matches(char::from(0)) {
-        data.uri = value.new_uri;
-        data.name = value.new_name;
-
-        let data_v2 = DataV2 {
-            name: data.name,
-            symbol: data.symbol,
-            uri: data.uri,
-            seller_fee_basis_points: data.seller_fee_basis_points,
-            creators: data.creators,
-            collection: value.metadata.collection,
-            uses: value.metadata.uses,
+    let metadata = value.metadata;
+    if metadata.uri.trim_matches(char::from(0)) != value.new_uri.trim_matches(char::from(0)) {
+        let data = Data {
+            name: value.new_name,
+            symbol: metadata.symbol,
+            uri: value.new_uri,
+            seller_fee_basis_points: metadata.seller_fee_basis_points,
+            creators: metadata.creators,
         };
 
-        let ix = update_metadata_accounts_v2(
-            TOKEN_METADATA_PROGRAM_ID,
-            value.metadata_pubkey,
-            update_authority.pubkey(),
-            None,
-            Some(data_v2),
-            None,
-            None,
-        );
+        let ix = UpdateV1Builder::new()
+            .authority(update_authority.pubkey())
+            .mint(value.mint_address)
+            .metadata(value.metadata_pubkey)
+            .payer(update_authority.pubkey())
+            .data(data)
+            .instruction();
 
         let recent_blockhash = client.get_latest_blockhash()?;
         let tx = Transaction::new_signed_with_payer(

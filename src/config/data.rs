@@ -305,12 +305,12 @@ impl Display for TokenStandard {
     }
 }
 
-impl From<TokenStandard> for mpl_token_metadata::state::TokenStandard {
+impl From<TokenStandard> for mpl_token_metadata::types::TokenStandard {
     fn from(token_standard: TokenStandard) -> Self {
         match token_standard {
-            TokenStandard::NonFungible => mpl_token_metadata::state::TokenStandard::NonFungible,
+            TokenStandard::NonFungible => mpl_token_metadata::types::TokenStandard::NonFungible,
             TokenStandard::ProgrammableNonFungible => {
-                mpl_token_metadata::state::TokenStandard::ProgrammableNonFungible
+                mpl_token_metadata::types::TokenStandard::ProgrammableNonFungible
             }
         }
     }

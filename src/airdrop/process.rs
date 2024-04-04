@@ -34,7 +34,7 @@ pub struct AirdropArgs {
 pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
 
     let mut airdrop_list: AirDropTargets = load_airdrop_list(args.airdrop_list)?;
 

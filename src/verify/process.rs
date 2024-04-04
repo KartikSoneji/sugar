@@ -1,10 +1,9 @@
 use std::{thread, time::Duration};
 
 use anchor_lang::AccountDeserialize;
-use borsh::BorshDeserialize;
 use console::style;
 use mpl_candy_machine_core::{constants::HIDDEN_SECTION, CandyMachine};
-use mpl_token_metadata::state::Metadata;
+use mpl_token_metadata::accounts::Metadata;
 
 use crate::{
     cache::*,
@@ -69,7 +68,7 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
     };
 
     let client = setup_client(&sugar_config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
 
     let data = match program.rpc().get_account_data(&candy_machine_pubkey) {
         Ok(account_data) => account_data,
@@ -184,7 +183,7 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
 
         let collection_metadata = find_metadata_pda(&candy_machine.collection_mint);
         let data = program.rpc().get_account_data(&collection_metadata)?;
-        let metadata: Metadata = BorshDeserialize::deserialize(&mut data.as_slice())?;
+        let metadata = Metadata::from_bytes(data.as_slice())?;
 
         if metadata.mint.to_string() != collection_mint_cache {
             println!("\nInvalid collection state found");

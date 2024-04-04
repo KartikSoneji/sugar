@@ -14,7 +14,7 @@ use anchor_client::solana_sdk::{
 };
 use anyhow::Result;
 use console::style;
-use mpl_token_metadata::state::{Metadata, TokenMetadataAccount};
+use mpl_token_metadata::accounts::Metadata;
 
 use crate::{
     cache::*,
@@ -169,7 +169,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         spinner.set_message("Creating candy machine...");
 
         let candy_data = create_candy_machine_data(&client, &config_data, &cache)?;
-        let program = client.program(CANDY_MACHINE_ID);
+        let program = client.program(CANDY_MACHINE_ID)?;
 
         // all good, let's create the candy machine
 

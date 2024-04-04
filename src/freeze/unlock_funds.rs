@@ -22,7 +22,7 @@ pub struct UnlockFundsArgs {
 pub fn process_unlock_funds(args: UnlockFundsArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair.clone(), args.rpc_url.clone())?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(mpl_candy_guard::ID);
+    let program = client.program(mpl_candy_guard::ID)?;
 
     // candy guard id specified takes precedence over the one from the cache
     let candy_guard_id = match args.candy_guard {

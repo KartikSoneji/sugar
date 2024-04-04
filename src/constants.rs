@@ -1,5 +1,5 @@
 use console::Emoji;
-pub use mpl_token_metadata::state::{
+pub use mpl_token_metadata::{
     MAX_CREATOR_LEN, MAX_CREATOR_LIMIT, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH,
 };
 

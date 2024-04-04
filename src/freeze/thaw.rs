@@ -8,8 +8,8 @@ use mpl_candy_guard::{
     instructions::RouteArgs, state::GuardType,
 };
 use mpl_token_metadata::{
-    pda::find_token_record_account,
-    state::{Metadata, ProgrammableConfig, TokenMetadataAccount, TokenRecord},
+    accounts::{Metadata, TokenRecord},
+    types::{ProgrammableConfig, TokenState},
 };
 
 use super::*;
@@ -87,7 +87,7 @@ const DEFAULT_TIMEOUT: u64 = 300;
 pub async fn process_thaw(args: ThawArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair.clone(), args.rpc_url.clone())?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(mpl_candy_guard::ID);
+    let program = client.program(mpl_candy_guard::ID)?;
     let rpc_url = get_rpc_url(args.rpc_url.clone());
     let rpc_client = RpcClient::new(&rpc_url);
 
@@ -233,7 +233,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
         // Only thaw frozen accounts.
         let (locked, token_standard, rule_set) = if account_data.is_frozen() {
             // We need to determine whether we have a NFT or pNFT.
-            let token_record_pubkey = find_token_record_account(&nft_mint_pubkey, &token_account).0;
+            let token_record_pubkey = TokenRecord::find_pda(&nft_mint_pubkey, &token_account).0;
             if let Some(token_record) = rpc_client
                 .get_account_with_commitment(&token_record_pubkey, CommitmentConfig::confirmed())
                 .unwrap()
@@ -241,7 +241,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
             {
                 let token_record = TokenRecord::safe_deserialize(&token_record.data).unwrap();
 
-                if token_record.is_locked() {
+                if token_record.state == TokenState::Locked {
                     let metadata_pubkey = find_metadata_pda(&nft_mint_pubkey);
                     let metadata_account = rpc_client
                         .get_account_with_commitment(
@@ -439,7 +439,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
             // Only thaw frozen accounts.
             if account_data.is_frozen() {
                 // We need to determine whether we have a NFT or pNFT.
-                let token_record_pubkey = find_token_record_account(&mint, &token_account).0;
+                let token_record_pubkey = TokenRecord::find_pda(&mint, &token_account).0;
                 let (locked, token_standard, rule_set) = if let Some(token_record) = client
                     .get_account_with_commitment(
                         &token_record_pubkey,
@@ -450,7 +450,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
                 {
                     let token_record = TokenRecord::safe_deserialize(&token_record.data).unwrap();
 
-                    if token_record.is_locked() {
+                    if token_record.state == TokenState::Locked {
                         let metadata_pubkey = find_metadata_pda(&mint);
                         let metadata_account = client
                             .get_account_with_commitment(
@@ -602,7 +602,7 @@ fn thaw_nft(
     priority_fee: &u64,
 ) -> Result<Signature> {
     let client = setup_client(&config)?;
-    let program = client.program(mpl_candy_guard::ID);
+    let program = client.program(mpl_candy_guard::ID)?;
 
     let mut remaining_accounts = Vec::with_capacity(7);
     let (freeze_pda, _) = find_freeze_pda(candy_guard_id, candy_machine_id, destination);
@@ -673,12 +673,12 @@ fn thaw_nft(
             is_writable: false,
         });
         remaining_accounts.push(AccountMeta {
-            pubkey: find_token_record_account(&nft.mint, &nft.token_account).0,
+            pubkey: TokenRecord::find_pda(&nft.mint, &nft.token_account).0,
             is_signer: false,
             is_writable: true,
         });
         remaining_accounts.push(AccountMeta {
-            pubkey: find_token_record_account(&nft.mint, &freeze_token_account).0,
+            pubkey: TokenRecord::find_pda(&nft.mint, &freeze_token_account).0,
             is_signer: false,
             is_writable: true,
         });

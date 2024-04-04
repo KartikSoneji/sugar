@@ -11,12 +11,12 @@ use mpl_candy_machine_core::{
     accounts as nft_accounts, instruction as nft_instruction, CandyMachineData, ConfigLineSettings,
     Creator as CandyCreator,
 };
-pub use mpl_token_metadata::state::{
-    MAX_CREATOR_LIMIT, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH,
-};
 use mpl_token_metadata::{
-    instruction::MetadataDelegateRole, pda::find_metadata_delegate_record_account,
-    state::TokenStandard,
+    accounts::MetadataDelegateRecord,
+    types::{MetadataDelegateRole, TokenStandard},
+};
+pub use mpl_token_metadata::{
+    MAX_CREATOR_LIMIT, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH,
 };
 use solana_program::native_token::LAMPORTS_PER_SOL;
 
@@ -170,7 +170,7 @@ pub fn initialize_candy_machine<C: Deref<Target = impl Signer> + Clone>(
 
     let collection_metadata = find_metadata_pda(&collection_mint);
     let collection_master_edition = find_master_edition_pda(&collection_mint);
-    let (collection_delegate_record, _) = find_metadata_delegate_record_account(
+    let (collection_delegate_record, _) = MetadataDelegateRecord::find_pda(
         &collection_mint,
         MetadataDelegateRole::Collection,
         &collection_update_authority,

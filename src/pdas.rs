@@ -5,11 +5,7 @@ use anchor_client::{
     Program,
 };
 use anyhow::{anyhow, Result};
-use mpl_token_metadata::{
-    pda::{find_master_edition_account, find_metadata_account},
-    state::{Key, MasterEditionV2, Metadata, TokenMetadataAccount, MAX_MASTER_EDITION_LEN},
-    utils::try_from_slice_checked,
-};
+use mpl_token_metadata::accounts::{MasterEdition, Metadata};
 
 use crate::candy_machine::CANDY_MACHINE_ID;
 
@@ -21,7 +17,7 @@ pub struct CollectionPDA {
 }
 
 pub fn find_metadata_pda(mint: &Pubkey) -> Pubkey {
-    let (pda, _bump) = find_metadata_account(mint);
+    let (pda, _bump) = Metadata::find_pda(mint);
 
     pda
 }
@@ -47,7 +43,7 @@ pub fn get_metadata_pda<C: Deref<Target = impl Signer> + Clone>(
 }
 
 pub fn find_master_edition_pda(mint: &Pubkey) -> Pubkey {
-    let (pda, _bump) = find_master_edition_account(mint);
+    let (pda, _bump) = MasterEdition::find_pda(mint);
 
     pda
 }
@@ -55,7 +51,7 @@ pub fn find_master_edition_pda(mint: &Pubkey) -> Pubkey {
 pub fn get_master_edition_pda<C: Deref<Target = impl Signer> + Clone>(
     mint: &Pubkey,
     program: &Program<C>,
-) -> Result<PdaInfo<MasterEditionV2>> {
+) -> Result<PdaInfo<MasterEdition>> {
     let master_edition_pubkey = find_master_edition_pda(mint);
     let master_edition_account =
         program
@@ -67,11 +63,7 @@ pub fn get_master_edition_pda<C: Deref<Target = impl Signer> + Clone>(
                     &master_edition_pubkey.to_string()
                 )
             })?;
-    let master_edition = try_from_slice_checked(
-        master_edition_account.data.as_slice(),
-        Key::MasterEditionV2,
-        MAX_MASTER_EDITION_LEN,
-    );
+    let master_edition = MasterEdition::from_bytes(&master_edition_account.data);
     master_edition
         .map(|m| (master_edition_pubkey, m))
         .map_err(|_| {

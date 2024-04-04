@@ -7,7 +7,7 @@ use mpl_candy_machine_core::{
     constants::{HIDDEN_SECTION, NULL_STRING},
     AccountVersion,
 };
-use mpl_token_metadata::state::TokenStandard;
+use mpl_token_metadata::types::TokenStandard;
 use tabled::{
     builder::Builder,
     settings::{object::Segment, Alignment, Modify, Style},
@@ -51,7 +51,7 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
 
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
 
     let candy_machine_id = match Pubkey::from_str(&candy_machine_id) {
         Ok(candy_machine_id) => candy_machine_id,

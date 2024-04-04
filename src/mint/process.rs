@@ -12,12 +12,8 @@ use mpl_candy_machine_core::{
     accounts as nft_accounts, instruction as nft_instruction, AccountVersion, CandyMachine,
 };
 use mpl_token_metadata::{
-    instruction::MetadataDelegateRole,
-    pda::{
-        find_collection_authority_account, find_metadata_delegate_record_account,
-        find_token_record_account,
-    },
-    state::{Metadata, TokenMetadataAccount},
+    accounts::{CollectionAuthorityRecord, Metadata, MetadataDelegateRecord, TokenRecord},
+    types::MetadataDelegateRole,
 };
 use solana_client::rpc_response::Response;
 use spl_associated_token_account::get_associated_token_address;
@@ -46,7 +42,7 @@ pub struct MintArgs {
 pub async fn process_mint(args: MintArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
 
     // the candy machine id specified takes precedence over the one from the cache
 
@@ -210,7 +206,7 @@ pub async fn mint(
     priority_fee: u64,
 ) -> Result<(Signature, Pubkey)> {
     let client = setup_client(&config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
     let payer = program.payer();
 
     if candy_machine_state.mint_authority != payer {
@@ -232,12 +228,12 @@ pub async fn mint(
         if matches!(candy_machine_state.version, AccountVersion::V1) {
             (
                 None,
-                find_collection_authority_account(&collection_mint, &authority_pda).0,
+                CollectionAuthorityRecord::find_pda(&collection_mint, &authority_pda).0,
             )
         } else {
             (
-                Some(find_token_record_account(&nft_mint.pubkey(), &token).0),
-                find_metadata_delegate_record_account(
+                Some(TokenRecord::find_pda(&nft_mint.pubkey(), &token).0),
+                MetadataDelegateRecord::find_pda(
                     &collection_mint,
                     MetadataDelegateRole::Collection,
                     &collection_update_authority,

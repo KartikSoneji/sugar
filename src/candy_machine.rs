@@ -24,7 +24,7 @@ pub fn get_candy_machine_state(
     candy_machine_id: &Pubkey,
 ) -> Result<CandyMachine> {
     let client = setup_client(sugar_config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
 
     program.account(*candy_machine_id).map_err(|e| match e {
         ClientError::AccountNotFound => anyhow!("Candy Machine does not exist!"),
@@ -49,7 +49,7 @@ pub fn load_candy_machine(
     candy_machine_id: &Pubkey,
 ) -> Result<(CandyMachine, Option<Pubkey>)> {
     let client = setup_client(sugar_config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
     // retrieves the account data
     let data = program.rpc().get_account_data(candy_machine_id)?;
     let candy_machine = CandyMachine::deserialize(&mut &data[8..])?;

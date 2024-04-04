@@ -9,10 +9,9 @@ use mpl_candy_machine_core::{
     accounts as nft_accounts, instruction as nft_instruction, AccountVersion,
 };
 use mpl_token_metadata::{
-    error::MetadataError,
-    instruction::MetadataDelegateRole,
-    pda::{find_collection_authority_account, find_metadata_delegate_record_account},
-    state::{MasterEditionV2, Metadata},
+    accounts::{CollectionAuthorityRecord, MasterEdition, Metadata, MetadataDelegateRecord},
+    errors::MplTokenMetadataError,
+    types::MetadataDelegateRole,
 };
 
 use crate::{
@@ -39,7 +38,7 @@ pub struct SetCollectionArgs {
 pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair.clone(), args.rpc_url.clone())?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
     let mut cache = Cache::new();
 
     // The candy machine id specified takes precedence over the one from the cache.
@@ -166,7 +165,7 @@ pub fn set_collection<C: Deref<Target = impl Signer> + Clone>(
     candy_machine_state: &CandyMachine,
     new_collection_mint_pubkey: &Pubkey,
     new_collection_metadata_info: &PdaInfo<Metadata>,
-    new_collection_edition_info: &PdaInfo<MasterEditionV2>,
+    new_collection_edition_info: &PdaInfo<MasterEdition>,
     args: &SetCollectionArgs,
 ) -> Result<Signature> {
     let payer = program.payer();
@@ -176,7 +175,7 @@ pub fn set_collection<C: Deref<Target = impl Signer> + Clone>(
     let (new_collection_metadata_pubkey, new_collection_metadata) = new_collection_metadata_info;
     let (new_collection_edition_pubkey, new_collection_edition) = new_collection_edition_info;
 
-    let new_collection_delegate_record = find_metadata_delegate_record_account(
+    let new_collection_delegate_record = MetadataDelegateRecord::find_pda(
         new_collection_mint_pubkey,
         MetadataDelegateRole::Collection,
         &new_collection_metadata.update_authority,
@@ -192,7 +191,9 @@ pub fn set_collection<C: Deref<Target = impl Signer> + Clone>(
     }
 
     if new_collection_edition.max_supply != Some(0) {
-        return Err(anyhow!(MetadataError::CollectionMustBeAUniqueMasterEdition));
+        return Err(anyhow!(
+            MplTokenMetadataError::CollectionMustBeAUniqueMasterEdition
+        ));
     }
 
     if candy_machine_state.items_redeemed > 0 {
@@ -206,9 +207,9 @@ pub fn set_collection<C: Deref<Target = impl Signer> + Clone>(
 
     let (authority_pda, _) = find_candy_machine_creator_pda(candy_pubkey);
     let collection_delegate_record = if matches!(candy_machine_state.version, AccountVersion::V1) {
-        find_collection_authority_account(&collection_mint, &authority_pda).0
+        CollectionAuthorityRecord::find_pda(&collection_mint, &authority_pda).0
     } else {
-        find_metadata_delegate_record_account(
+        MetadataDelegateRecord::find_pda(
             &collection_mint,
             MetadataDelegateRole::Collection,
             &collection_metadata.update_authority,

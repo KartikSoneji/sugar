@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use anchor_lang::prelude::Pubkey;
-pub use mpl_token_metadata::state::{MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH};
+pub use mpl_token_metadata::{MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH};
 
 use crate::{
     common::*,

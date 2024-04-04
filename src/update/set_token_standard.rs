@@ -5,8 +5,8 @@ use anyhow::Result;
 use console::style;
 use mpl_candy_machine_core::{accounts::SetTokenStandard, AccountVersion};
 use mpl_token_metadata::{
-    instruction::MetadataDelegateRole,
-    pda::{find_collection_authority_account, find_metadata_delegate_record_account},
+    accounts::{CollectionAuthorityRecord, MetadataDelegateRecord},
+    types::MetadataDelegateRole,
 };
 
 use crate::{
@@ -62,7 +62,7 @@ pub fn process_set_token_stardard(args: SetTokenStandardArgs) -> Result<()> {
 
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
 
     let pb = spinner_with_style();
     pb.set_message("Connecting...");
@@ -94,12 +94,12 @@ pub fn process_set_token_stardard(args: SetTokenStandardArgs) -> Result<()> {
     let collection_update_authority = collection_metadata_pda.update_authority;
 
     let collection_authority_record = if matches!(candy_machine_state.version, AccountVersion::V1) {
-        Some(find_collection_authority_account(&collection_mint, &authority_pda).0)
+        Some(CollectionAuthorityRecord::find_pda(&collection_mint, &authority_pda).0)
     } else {
         None
     };
 
-    let collection_delegate_record = find_metadata_delegate_record_account(
+    let collection_delegate_record = MetadataDelegateRecord::find_pda(
         &collection_mint,
         MetadataDelegateRole::Collection,
         &collection_update_authority,
@@ -110,7 +110,7 @@ pub fn process_set_token_stardard(args: SetTokenStandardArgs) -> Result<()> {
     // either uses the specified token standard or the existing one, for the case
     // where only the rule set will be set
     let token_standard = if let Some(token_standard) = args.token_standard {
-        <TokenStandard as std::convert::Into<mpl_token_metadata::state::TokenStandard>>::into(
+        <TokenStandard as std::convert::Into<mpl_token_metadata::types::TokenStandard>>::into(
             token_standard,
         ) as u8
     } else {
